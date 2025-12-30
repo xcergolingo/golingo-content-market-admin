@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Golingo Content Market – Admin</title>
+  <style>
+    :root{
+      --primary:#6366f1;
+      --primary-dark:#4f46e5;
+      --dark:#111827;
+      --light:#f9fafb;
+      --gray:#6b7280;
+      --border:#e5e7eb;
+      --danger:#dc2626;
+      --success:#16a34a;
+      --warning:#f59e0b;
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      background:var(--light);
+      color:var(--dark);
+      line-height:1.5;
+    }
+
+    header{
+      background:#fff;
+      box-shadow:0 2px 4px rgba(0,0,0,.08);
+      position:sticky; top:0; z-index:10;
+    }
+    nav{
+      max-width:1200px;
+      margin:0 auto;
+      padding:1rem 1.25rem;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:1rem;
+    }
+    .logo{
+      font-weight:900;
+      color:var(--primary);
+      font-size:1.25rem;
+      display:flex;
+      align-items:center;
+      gap:.75rem;
+      white-space:nowrap;
+    }
+    .badge{
+      font-size:.75rem;
+      font-weight:800;
+      padding:.2rem .5rem;
+      border-radius:999px;
+      background:rgba(99,102,241,.12);
+      color:var(--primary-dark);
+      border:1px solid rgba(99,102,241,.25);
+    }
+    main{
+      max-width:1200px;
+      margin:2rem auto 4rem;
+      padding:0 1.25rem;
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap:1.25rem;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      main{grid-template-columns:1fr}
+    }
+
+    .card{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:12px;
+      box-shadow:0 6px 16px rgba(17,24,39,.05);
+      overflow:hidden;
+    }
+    .card h2{
+      padding:1rem 1.25rem;
+      border-bottom:1px solid var(--border);
+      font-size:1.05rem;
+    }
+    .card .content{padding:1rem 1.25rem}
+
+    label{display:block; font-weight:700; margin:.75rem 0 .35rem}
+    input[type="text"], textarea{
+      width:100%;
+      padding:.7rem .85rem;
+      border:1px solid #d1d5db;
+      border-radius:10px;
+      font-size:0.95rem;
+      outline:none;
+    }
+    textarea{min-height:120px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:.85rem}
+    input[type="file"]{
+      width:100%;
+      padding:.65rem .75rem;
+      border:1px dashed #cbd5e1;
+      border-radius:12px;
+      background:#f8fafc;
+    }
+    .row{
+      display:flex;
+      gap:.75rem;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .row > *{flex:1}
+    .row .shrink{flex:0}
+
+    .btn{
+      appearance:none;
+      border:none;
+      border-radius:10px;
+      padding:.75rem 1rem;
+      font-weight:800;
+      background:var(--primary);
+      color:#fff;
+      cursor:pointer;
+      transition: background .15s ease;
+      white-space:nowrap;
+    }
+    .btn:hover{background:var(--primary-dark)}
+    .btn.secondary{
+      background:#6b7280;
+    }
+    .btn.secondary:hover{background:#4b5563}
+    .btn.ghost{
+      background:transparent;
+      color:var(--dark);
+      border:1px solid var(--border);
+    }
+    .btn.ghost:hover{background:#f3f4f6}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+    .help{
+      font-size:.88rem;
+      color:var(--gray);
+      margin-top:.35rem;
+    }
+    .kv{
+      display:grid;
+      grid-template-columns: 140px 1fr;
+      gap:.35rem .75rem;
+      align-items:baseline;
+      font-size:.92rem;
+      margin:.5rem 0 0;
+    }
+    .kv div:nth-child(odd){color:var(--gray);font-weight:700}
+
+    .status{
+      margin-top:.9rem;
+      padding:.75rem .9rem;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#f9fafb;
+      font-size:.92rem;
+      color:#374151;
+      display:none;
+    }
+    .status.show{display:block}
+    .status.ok{border-color:rgba(22,163,74,.35); background:rgba(22,163,74,.07)}
+    .status.bad{border-color:rgba(220,38,38,.35); background:rgba(220,38,38,.07)}
+    .status.warn{border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.07)}
+
+    .toolbar{
+      padding:1rem 1.25rem;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      justify-content:space-between;
+      gap:.75rem;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .toolbar .left{display:flex; gap:.75rem; align-items:center; flex-wrap:wrap}
+    .toolbar input[type="text"]{width:min(520px, 72vw)}
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      font-size:.95rem;
+    }
+    thead th{
+      text-align:left;
+      padding:.75rem 1.25rem;
+      color:#374151;
+      font-size:.85rem;
+      letter-spacing:.02em;
+      text-transform:uppercase;
+      border-bottom:1px solid var(--border);
+      background:#fbfbfc;
+      position:sticky;
+      top:0;
+      z-index:5;
+    }
+    tbody td{
+      padding:.85rem 1.25rem;
+      border-bottom:1px solid #f3f4f6;
+      vertical-align:top;
+    }
+    tbody tr:hover td{background:#fafafa}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:.88rem}
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:.4rem;
+      border:1px solid var(--border);
+      padding:.2rem .55rem;
+      border-radius:999px;
+      color:#374151;
+      background:#fff;
+      font-size:.8rem;
+      font-weight:800;
+      white-space:nowrap;
+    }
+    .actions{display:flex; gap:.5rem; flex-wrap:wrap}
+    .small{padding:.5rem .75rem; border-radius:10px; font-weight:900; font-size:.85rem}
+
+    #courseTableScroll{overflow:auto; max-height:70vh;}
+
+    .modal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.65);
+      z-index:1000;
+      justify-content:center;
+      align-items:center;
+      padding:1rem;
+    }
+    .modal-content{
+      background:#fff;
+      width:min(900px, 96vw);
+      max-height: 92vh;
+      overflow:auto;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.1);
+    }
+    .modal-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:1rem;
+      padding:1rem 1.25rem;
+      border-bottom:1px solid var(--border);
+    }
+    .close-btn{
+      background:transparent;
+      border:none;
+      font-size:1.75rem;
+      cursor:pointer;
+      color:var(--gray);
+      line-height:1;
+    }
+    pre{
+      padding:1rem 1.25rem 1.25rem;
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:.85rem;
+      color:#0f172a;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .two-col{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:0;
+    }
+    @media (max-width: 980px){
+      .two-col{grid-template-columns:1fr}
+    }
+    .panel{
+      border-right:1px solid var(--border);
+    }
+    @media (max-width: 980px){
+      .panel{border-right:none;border-bottom:1px solid var(--border)}
+    }
+    .panel h3{
+      padding:1rem 1.25rem .5rem;
+      font-size:.95rem;
+    }
+    .panel .panel-body{padding:0 1.25rem 1.25rem}
+    video{width:100%; border-radius:12px; border:1px solid var(--border); background:#0b1220}
+  </style>
+</head>
+<body>
+  <header>
+    <nav>
+      <div class="logo">
+        Golingo Content Market <span class="badge">Admin</span>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn ghost" id="refreshBtn">Refresh list</button>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Upload Course JSON</h2>
+      <div class="content">
+        <label for="fileInput">Course file</label>
+        <input id="fileInput" type="file" accept=".golingocontent,application/json,.json" />
+        <div class="help">Accepts `.golingocontent` (or `.json`)</div>
+
+        <div class="row">
+          <div>
+            <label for="courseNameInput">Course name</label>
+            <input id="courseNameInput" type="text" placeholder="e.g. Chinese -> English" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="courseIdInput">Course id</label>
+            <input id="courseIdInput" class="mono" type="text" placeholder="Generated UUID" />
+          </div>
+          <div class="shrink">
+            <label>&nbsp;</label>
+            <button class="btn secondary" id="regenBtn" type="button">Regenerate</button>
+          </div>
+        </div>
+
+        <label for="contentPreview">Content preview (first 2KB)</label>
+        <textarea id="contentPreview" readonly placeholder="Select a JSON file to preview its content…"></textarea>
+        <div class="kv">
+          <div>File</div><div id="fileMeta">—</div>
+          <div>Content bytes</div><div id="contentBytes">—</div>
+          <div>Parsed</div><div id="parsedMeta">—</div>
+        </div>
+
+        <div class="row" style="margin-top:1rem; justify-content:space-between">
+          <button class="btn" id="uploadBtn" type="button" disabled>Upload to database</button>
+          <button class="btn ghost" id="clearBtn" type="button">Clear</button>
+        </div>
+
+        <div id="uploadStatus" class="status"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="toolbar">
+        <div class="left">
+          <div style="font-weight:900">Uploaded courses</div>
+          <span id="courseCount" class="pill">0</span>
+        </div>
+        <div class="left">
+          <input id="searchInput" type="text" placeholder="Search by course name or id…" autocomplete="off" spellcheck="false" />
+          <button class="btn ghost small" id="clearSearchBtn" type="button">Clear</button>
+        </div>
+      </div>
+      <div id="courseTableScroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:260px;">Course</th>
+              <th style="min-width:220px;">Course ID</th>
+              <th style="min-width:170px;">Content</th>
+              <th style="min-width:220px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="coursesTbody">
+            <tr><td colspan="4" style="color:var(--gray); padding:1rem 1.25rem;">Loading courses…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="listStatus" class="status" style="margin: 1rem 1.25rem 1.25rem;"></div>
+    </section>
+  </main>
+
+  <div id="detailsModal" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div style="font-weight:900" id="detailsTitle">Course details</div>
+          <div class="help" id="detailsSubtitle"></div>
+        </div>
+        <button class="close-btn" id="detailsCloseBtn" aria-label="Close">×</button>
+      </div>
+
+      <div class="two-col">
+        <div class="panel">
+          <h3>Preview</h3>
+          <div class="panel-body">
+            <div id="previewNoVideo" class="help" style="display:none; margin-bottom:.75rem;">No preview video available for this course.</div>
+            <video id="previewVideo" controls muted>
+              <source id="previewSource" src="" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            <div style="margin-top: .9rem; font-weight:900">Sample text</div>
+            <div id="previewText" style="white-space:pre-wrap; color:#374151; margin-top:.35rem;"></div>
+          </div>
+        </div>
+        <div>
+          <h3>Raw content</h3>
+          <pre id="detailsContent"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CONTENT_MARKET_UPLOAD_ENDPOINT = "https://gzob52iqr5.execute-api.us-east-1.amazonaws.com/prod/content-market-upload-data";
+    const CONTENT_MARKET_LIST_ENDPOINT = "https://gzob52iqr5.execute-api.us-east-1.amazonaws.com/prod/content-market-list-data";
+
+    const state = {
+      fileName: "",
+      contentText: "",
+      parsed: null,
+      courses: [],
+      filtered: [],
+    };
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[ch]));
+    }
+
+    function uuidv4() {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+      }
+      if (typeof crypto === "undefined" || typeof crypto.getRandomValues !== "function") {
+        const rand = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
+        return `${rand()}${rand()}-${rand()}-${rand()}-${rand()}-${rand()}${rand()}${rand()}`;
+      }
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+      return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+    }
+
+    function setStatus(el, kind, message) {
+      el.classList.remove("ok", "bad", "warn", "show");
+      if (!message) return;
+      el.textContent = message;
+      el.classList.add("show");
+      if (kind) el.classList.add(kind);
+    }
+
+    function normalizeListResponse(data) {
+      if (data?.body) {
+        if (Array.isArray(data.body)) return data.body;
+        if (typeof data.body === "string") {
+          try {
+            const parsed = JSON.parse(data.body);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+      }
+      if (Array.isArray(data)) return data;
+      return [];
+    }
+
+    function parseCourseContent(raw) {
+      if (!raw) return null;
+      if (typeof raw === "object") return raw;
+      if (typeof raw !== "string") return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    }
+
+    function getCourseNameFromParsed(parsed) {
+      if (!parsed || typeof parsed !== "object") return "";
+      return parsed.courseName || parsed.coureName || parsed.course_name || "";
+    }
+
+    function toCourseRow(item, index) {
+      const courseNameRaw = item?.course_name ?? item?.courseName ?? "";
+      const courseName = String(courseNameRaw ?? "").trim() || `Course ${index + 1}`;
+      const courseIdRaw = item?.course_id ?? item?.courseId ?? item?.id ?? "";
+      const courseId = String(courseIdRaw ?? "").trim() || String(index + 1);
+      const rawContent = item?.content ?? null;
+      const parsedContent = parseCourseContent(rawContent);
+      const first = parsedContent?.contents?.[0] ?? null;
+      const previewVideoUrl = first?.mVideoUrl ?? "";
+      const previewText = first?.mContent ?? "";
+      const contentBytes = typeof rawContent === "string" ? new Blob([rawContent]).size : 0;
+      const lessonCount = Array.isArray(parsedContent?.contents) ? parsedContent.contents.length : null;
+
+      return { courseId, courseName, rawContent, parsedContent, previewVideoUrl, previewText, contentBytes, lessonCount };
+    }
+
+    const fileInput = document.getElementById("fileInput");
+    const courseNameInput = document.getElementById("courseNameInput");
+    const courseIdInput = document.getElementById("courseIdInput");
+    const regenBtn = document.getElementById("regenBtn");
+    const contentPreview = document.getElementById("contentPreview");
+    const fileMeta = document.getElementById("fileMeta");
+    const contentBytesEl = document.getElementById("contentBytes");
+    const parsedMeta = document.getElementById("parsedMeta");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const uploadStatus = document.getElementById("uploadStatus");
+
+    const refreshBtn = document.getElementById("refreshBtn");
+    const searchInput = document.getElementById("searchInput");
+    const clearSearchBtn = document.getElementById("clearSearchBtn");
+    const coursesTbody = document.getElementById("coursesTbody");
+    const courseCount = document.getElementById("courseCount");
+    const listStatus = document.getElementById("listStatus");
+    const courseTableScroll = document.getElementById("courseTableScroll");
+
+    const detailsModal = document.getElementById("detailsModal");
+    const detailsCloseBtn = document.getElementById("detailsCloseBtn");
+    const detailsTitle = document.getElementById("detailsTitle");
+    const detailsSubtitle = document.getElementById("detailsSubtitle");
+    const detailsContent = document.getElementById("detailsContent");
+    const previewVideo = document.getElementById("previewVideo");
+    const previewSource = document.getElementById("previewSource");
+    const previewTextEl = document.getElementById("previewText");
+    const previewNoVideo = document.getElementById("previewNoVideo");
+
+    function setGeneratedIdIfEmpty() {
+      if (!courseIdInput.value.trim()) courseIdInput.value = uuidv4();
+    }
+
+    function updateUploadFormState() {
+      const hasContent = Boolean(state.contentText);
+      uploadBtn.disabled = !hasContent || !courseNameInput.value.trim() || !courseIdInput.value.trim();
+    }
+
+    function clearUploadForm() {
+      fileInput.value = "";
+      state.fileName = "";
+      state.contentText = "";
+      state.parsed = null;
+      courseNameInput.value = "";
+      courseIdInput.value = "";
+      contentPreview.value = "";
+      fileMeta.textContent = "—";
+      contentBytesEl.textContent = "—";
+      parsedMeta.textContent = "—";
+      setStatus(uploadStatus, "", "");
+      updateUploadFormState();
+    }
+
+    async function handleFileSelection(file) {
+      setStatus(uploadStatus, "", "");
+      if (!file) {
+        clearUploadForm();
+        return;
+      }
+
+      state.fileName = file.name || "course.json";
+      fileMeta.textContent = state.fileName;
+
+      try {
+        const text = await file.text();
+        state.contentText = text;
+        contentBytesEl.textContent = `${new Blob([text]).size.toLocaleString()} bytes`;
+        contentPreview.value = text.slice(0, 2048);
+
+        let parsed = null;
+        try {
+          parsed = JSON.parse(text);
+          state.parsed = parsed;
+          parsedMeta.textContent = "✅ valid JSON";
+        } catch {
+          state.parsed = null;
+          parsedMeta.textContent = "⚠️ not valid JSON";
+        }
+
+        const extractedName = getCourseNameFromParsed(parsed);
+        if (!courseNameInput.value.trim() && extractedName) courseNameInput.value = extractedName;
+        setGeneratedIdIfEmpty();
+
+        updateUploadFormState();
+      } catch (err) {
+        console.error(err);
+        setStatus(uploadStatus, "bad", "Failed to read file. Check console.");
+        updateUploadFormState();
+      }
+    }
+
+    async function uploadCourse() {
+      setStatus(uploadStatus, "", "");
+
+      const course_id = courseIdInput.value.trim();
+      const course_name = courseNameInput.value.trim();
+      const content = state.contentText;
+
+      if (!course_id || !course_name || !content) {
+        setStatus(uploadStatus, "warn", "Missing course_id, course_name, or content.");
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = "Uploading…";
+
+      try {
+        const res = await fetch(CONTENT_MARKET_UPLOAD_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ course_id, course_name, content })
+        });
+
+        if (!res.ok) throw new Error(`Upload request failed (${res.status})`);
+        const data = await res.json().catch(() => ({}));
+        if (typeof data?.statusCode === "number" && data.statusCode >= 400) {
+          throw new Error(`Upload failed (${data.statusCode})`);
+        }
+
+        setStatus(uploadStatus, "ok", `Uploaded: ${course_name} (${course_id})`);
+        await loadCoursesFromApi();
+      } catch (err) {
+        console.error(err);
+        setStatus(uploadStatus, "bad", "Upload failed. Check console for details.");
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "Upload to database";
+        updateUploadFormState();
+      }
+    }
+
+    function updateCourseCount() {
+      const total = state.courses.length;
+      const filtered = state.filtered.length;
+      courseCount.textContent = filtered === total ? String(total) : `${filtered}/${total}`;
+    }
+
+    function renderCourseList(list) {
+      updateCourseCount();
+      coursesTbody.innerHTML = "";
+      if (courseTableScroll) courseTableScroll.scrollTop = 0;
+
+      if (!list.length) {
+        const tr = document.createElement("tr");
+        const msg = state.courses.length ? "No courses match your search." : "No courses found.";
+        tr.innerHTML = `<td colspan="4" style="color:var(--gray); padding:1rem 1.25rem;">${escapeHtml(msg)}</td>`;
+        coursesTbody.appendChild(tr);
+        return;
+      }
+
+      for (const course of list) {
+        try {
+          const tr = document.createElement("tr");
+          const lessonBits = [];
+          if (typeof course.lessonCount === "number") lessonBits.push(`${course.lessonCount} lessons`);
+          if (course.previewVideoUrl) lessonBits.push("video");
+          const meta = lessonBits.length ? lessonBits.join(" • ") : "—";
+
+          tr.innerHTML = `
+            <td>
+              <div style="font-weight:900; margin-bottom:.2rem;">${escapeHtml(course.courseName)}</div>
+              <div class="help">${escapeHtml(meta)}</div>
+            </td>
+            <td class="mono">${escapeHtml(course.courseId)}</td>
+            <td>
+              <span class="pill">${(course.contentBytes || 0).toLocaleString()} bytes</span>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="btn ghost small" data-action="details">Details</button>
+                <button class="btn secondary small" data-action="copyid">Copy ID</button>
+              </div>
+            </td>
+          `;
+
+          tr.querySelector('[data-action="details"]')?.addEventListener("click", () => openDetails(course));
+          tr.querySelector('[data-action="copyid"]')?.addEventListener("click", async () => {
+            try {
+              await navigator.clipboard.writeText(String(course.courseId));
+            } catch {
+              prompt("Copy course id:", String(course.courseId));
+            }
+          });
+
+          coursesTbody.appendChild(tr);
+        } catch (e) {
+          console.error("[admin] render row failed:", e, course);
+        }
+      }
+    }
+
+    function applySearchFilter() {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        state.filtered = state.courses.slice();
+      } else {
+        state.filtered = state.courses.filter(c =>
+          String(c.courseName || "").toLowerCase().includes(q) ||
+          String(c.courseId || "").toLowerCase().includes(q)
+        );
+      }
+      renderCourseList(state.filtered);
+
+      if (q) {
+        setStatus(listStatus, "warn", `Showing ${state.filtered.length}/${state.courses.length} course(s). Clear search to see all.`);
+      } else {
+        setStatus(listStatus, "ok", `Loaded ${state.courses.length} course(s).`);
+      }
+    }
+
+    function openDetails(course) {
+      detailsTitle.textContent = course.courseName || "Course details";
+      detailsSubtitle.textContent = course.courseId ? `course_id: ${course.courseId}` : "";
+
+      const raw = course.rawContent;
+      const parsed = course.parsedContent;
+      if (parsed) {
+        try {
+          detailsContent.textContent = JSON.stringify(parsed, null, 2);
+        } catch {
+          detailsContent.textContent = String(raw ?? "");
+        }
+      } else {
+        detailsContent.textContent = String(raw ?? "");
+      }
+
+      previewTextEl.textContent = course.previewText || "";
+      if (!course.previewVideoUrl) {
+        previewNoVideo.style.display = "block";
+        previewSource.src = "";
+        previewVideo.load();
+      } else {
+        previewNoVideo.style.display = "none";
+        previewSource.src = course.previewVideoUrl;
+        previewVideo.load();
+      }
+
+      detailsModal.style.display = "flex";
+    }
+
+    function closeDetails() {
+      detailsModal.style.display = "none";
+      try {
+        previewVideo.pause();
+      } catch {}
+    }
+
+    async function loadCoursesFromApi() {
+      setStatus(listStatus, "", "");
+      coursesTbody.innerHTML = `<tr><td colspan="4" style="color:var(--gray); padding:1rem 1.25rem;">Loading courses…</td></tr>`;
+
+      try {
+        const res = await fetch(CONTENT_MARKET_LIST_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+        if (!res.ok) throw new Error(`List request failed (${res.status})`);
+
+        const rawText = await res.text();
+        console.log(rawText);
+
+        let data = {};
+        try {
+          data = rawText ? JSON.parse(rawText) : {};
+        } catch (e) {
+          console.warn("[admin] list response not JSON:", e);
+          data = { _raw: rawText };
+        }
+        const list = normalizeListResponse(data);
+        state.courses = list.map(toCourseRow);
+        applySearchFilter();
+      } catch (err) {
+        console.error(err);
+        state.courses = [];
+        applySearchFilter();
+        setStatus(listStatus, "bad", "Failed to load courses. Check console for details.");
+      }
+    }
+
+    // Wire up events
+    fileInput.addEventListener("change", (e) => handleFileSelection(e.target.files?.[0] || null));
+    courseNameInput.addEventListener("input", updateUploadFormState);
+    courseIdInput.addEventListener("input", updateUploadFormState);
+    regenBtn.addEventListener("click", () => {
+      courseIdInput.value = uuidv4();
+      updateUploadFormState();
+    });
+    uploadBtn.addEventListener("click", uploadCourse);
+    clearBtn.addEventListener("click", clearUploadForm);
+    refreshBtn.addEventListener("click", loadCoursesFromApi);
+    searchInput.addEventListener("input", applySearchFilter);
+    clearSearchBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      applySearchFilter();
+      searchInput.focus();
+    });
+
+    detailsCloseBtn.addEventListener("click", closeDetails);
+    detailsModal.addEventListener("click", (e) => {
+      if (e.target === detailsModal) closeDetails();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeDetails();
+    });
+
+    // Init
+    searchInput.value = "";
+    setGeneratedIdIfEmpty();
+    updateUploadFormState();
+    loadCoursesFromApi();
+
+    // Some browsers restore form values after JS runs (bfcache/session restore).
+    window.addEventListener("pageshow", () => {
+      if (searchInput.value) {
+        searchInput.value = "";
+        applySearchFilter();
+      }
+    });
+  </script>
+</body>
+</html>
