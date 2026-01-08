@@ -283,6 +283,13 @@
     }
     .panel .panel-body{padding:0 1.25rem 1.25rem}
     video{width:100%; border-radius:12px; border:1px solid var(--border); background:#0b1220}
+    .divider{
+      margin-top:1.25rem;
+      padding-top:1rem;
+      border-top:1px solid var(--border);
+    }
+    .section-title{font-weight:900; margin-bottom:.35rem}
+    .fileline{font-size:.9rem; color:#374151; margin-top:.35rem}
   </style>
 </head>
 <body>
@@ -337,6 +344,27 @@
         </div>
 
         <div id="uploadStatus" class="status"></div>
+
+        <div class="divider">
+          <div class="section-title">Upload Course Media (optional)</div>
+          <div class="help">Uses the same <span class="mono">course_id</span> above as the S3 key prefix.</div>
+
+          <label for="coverImageInput">Cover image</label>
+          <input id="coverImageInput" type="file" accept="image/*" />
+          <div id="coverImageMeta" class="fileline">—</div>
+          <div class="row" style="margin-top:.6rem; justify-content:space-between">
+            <button class="btn" id="uploadCoverBtn" type="button" disabled>Upload cover image</button>
+          </div>
+          <div id="coverUploadStatus" class="status"></div>
+
+          <label for="courseVideoInput" style="margin-top:1rem;">Course video</label>
+          <input id="courseVideoInput" type="file" accept="video/*" />
+          <div id="courseVideoMeta" class="fileline">—</div>
+          <div class="row" style="margin-top:.6rem; justify-content:space-between">
+            <button class="btn" id="uploadVideoBtn" type="button" disabled>Upload video</button>
+          </div>
+          <div id="videoUploadStatus" class="status"></div>
+        </div>
       </div>
     </section>
 
@@ -404,6 +432,7 @@
   <script>
     const CONTENT_MARKET_UPLOAD_ENDPOINT = "https://gzob52iqr5.execute-api.us-east-1.amazonaws.com/prod/content-market-upload-data";
     const CONTENT_MARKET_LIST_ENDPOINT = "https://gzob52iqr5.execute-api.us-east-1.amazonaws.com/prod/content-market-list-data";
+    const CONTENT_MARKET_META_S3_LINK_ENDPOINT = "https://gzob52iqr5.execute-api.us-east-1.amazonaws.com/prod/content-market-upload-meta-s3-link-gen";
 
     const state = {
       fileName: "",
@@ -503,6 +532,16 @@
     const clearBtn = document.getElementById("clearBtn");
     const uploadStatus = document.getElementById("uploadStatus");
 
+    const coverImageInput = document.getElementById("coverImageInput");
+    const coverImageMeta = document.getElementById("coverImageMeta");
+    const uploadCoverBtn = document.getElementById("uploadCoverBtn");
+    const coverUploadStatus = document.getElementById("coverUploadStatus");
+
+    const courseVideoInput = document.getElementById("courseVideoInput");
+    const courseVideoMeta = document.getElementById("courseVideoMeta");
+    const uploadVideoBtn = document.getElementById("uploadVideoBtn");
+    const videoUploadStatus = document.getElementById("videoUploadStatus");
+
     const refreshBtn = document.getElementById("refreshBtn");
     const searchInput = document.getElementById("searchInput");
     const clearSearchBtn = document.getElementById("clearSearchBtn");
@@ -530,6 +569,19 @@
       uploadBtn.disabled = !hasContent || !courseNameInput.value.trim() || !courseIdInput.value.trim();
     }
 
+    function updateMediaFormState() {
+      const hasCourseId = Boolean(courseIdInput.value.trim());
+      const coverFile = coverImageInput?.files?.[0] || null;
+      const videoFile = courseVideoInput?.files?.[0] || null;
+      uploadCoverBtn.disabled = !hasCourseId || !coverFile;
+      uploadVideoBtn.disabled = !hasCourseId || !videoFile;
+    }
+
+    function updateFormState() {
+      updateUploadFormState();
+      updateMediaFormState();
+    }
+
     function clearUploadForm() {
       fileInput.value = "";
       state.fileName = "";
@@ -542,7 +594,15 @@
       contentBytesEl.textContent = "—";
       parsedMeta.textContent = "—";
       setStatus(uploadStatus, "", "");
-      updateUploadFormState();
+
+      if (coverImageInput) coverImageInput.value = "";
+      if (courseVideoInput) courseVideoInput.value = "";
+      if (coverImageMeta) coverImageMeta.textContent = "—";
+      if (courseVideoMeta) courseVideoMeta.textContent = "—";
+      setStatus(coverUploadStatus, "", "");
+      setStatus(videoUploadStatus, "", "");
+
+      updateFormState();
     }
 
     async function handleFileSelection(file) {
@@ -575,11 +635,89 @@
         if (!courseNameInput.value.trim() && extractedName) courseNameInput.value = extractedName;
         setGeneratedIdIfEmpty();
 
-        updateUploadFormState();
+        updateFormState();
       } catch (err) {
         console.error(err);
         setStatus(uploadStatus, "bad", "Failed to read file. Check console.");
-        updateUploadFormState();
+        updateFormState();
+      }
+    }
+
+    async function requestPresignedUploadUrl({ course_id, filename, file_type }) {
+      const res = await fetch(CONTENT_MARKET_META_S3_LINK_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_id, filename, file_type }),
+      });
+      if (!res.ok) throw new Error(`S3 link request failed (${res.status})`);
+
+      const data = await res.json().catch(() => ({}));
+      if (typeof data?.statusCode === "number" && data.statusCode >= 400) {
+        throw new Error(`S3 link request returned statusCode=${String(data.statusCode)}`);
+      }
+      if (typeof data?.statusCode === "string" && data.statusCode.toLowerCase() !== "success") {
+        throw new Error(`S3 link request returned statusCode=${String(data.statusCode)}`);
+      }
+
+      let body = data?.body ?? data;
+      if (typeof body === "string") {
+        try { body = JSON.parse(body); } catch {}
+      }
+
+      const upload_url = body?.upload_url;
+      const key = body?.filename;
+      const content_type = body?.content_type;
+      if (!upload_url) throw new Error("Missing upload_url in response");
+      return { upload_url, key, content_type };
+    }
+
+    async function uploadFileToPresignedUrl({ upload_url, file, content_type }) {
+      const res = await fetch(upload_url, {
+        method: "PUT",
+        headers: { "Content-Type": String(content_type || file.type || "application/octet-stream") },
+        body: file,
+      });
+      if (!res.ok) throw new Error(`S3 upload failed (${res.status})`);
+    }
+
+    async function uploadMediaFile({ file, fileType, statusEl, buttonEl }) {
+      setStatus(statusEl, "", "");
+      const course_id = courseIdInput.value.trim();
+      if (!course_id) {
+        setStatus(statusEl, "warn", "Missing course_id.");
+        return;
+      }
+      if (!file) {
+        setStatus(statusEl, "warn", "No file selected.");
+        return;
+      }
+      if (file.type) {
+        const expectedPrefix = fileType === "image" ? "image/" : fileType === "video" ? "video/" : "";
+        if (expectedPrefix && !file.type.startsWith(expectedPrefix)) {
+          setStatus(statusEl, "warn", `Selected file doesn't look like a ${fileType} (${file.type}).`);
+          return;
+        }
+      }
+
+      const prevText = buttonEl.textContent;
+      buttonEl.disabled = true;
+      buttonEl.textContent = "Uploading…";
+
+      try {
+        const { upload_url, key, content_type } = await requestPresignedUploadUrl({
+          course_id,
+          filename: file.name || `${fileType}`,
+          file_type: fileType,
+        });
+        await uploadFileToPresignedUrl({ upload_url, file, content_type });
+        setStatus(statusEl, "ok", `Uploaded to S3 key: ${key || "(unknown)"}`);
+      } catch (err) {
+        console.error(err);
+        setStatus(statusEl, "bad", "Upload failed. Check console for details.");
+      } finally {
+        buttonEl.textContent = prevText;
+        buttonEl.disabled = false;
+        updateMediaFormState();
       }
     }
 
@@ -619,7 +757,7 @@
       } finally {
         uploadBtn.disabled = false;
         uploadBtn.textContent = "Upload to database";
-        updateUploadFormState();
+        updateFormState();
       }
     }
 
@@ -774,11 +912,11 @@
 
     // Wire up events
     fileInput.addEventListener("change", (e) => handleFileSelection(e.target.files?.[0] || null));
-    courseNameInput.addEventListener("input", updateUploadFormState);
-    courseIdInput.addEventListener("input", updateUploadFormState);
+    courseNameInput.addEventListener("input", updateFormState);
+    courseIdInput.addEventListener("input", updateFormState);
     regenBtn.addEventListener("click", () => {
       courseIdInput.value = uuidv4();
-      updateUploadFormState();
+      updateFormState();
     });
     uploadBtn.addEventListener("click", uploadCourse);
     clearBtn.addEventListener("click", clearUploadForm);
@@ -798,10 +936,41 @@
       if (e.key === "Escape") closeDetails();
     });
 
+    coverImageInput.addEventListener("change", () => {
+      setGeneratedIdIfEmpty();
+      const f = coverImageInput.files?.[0] || null;
+      coverImageMeta.textContent = f ? `${f.name} (${(f.size || 0).toLocaleString()} bytes)` : "—";
+      setStatus(coverUploadStatus, "", "");
+      updateMediaFormState();
+    });
+    courseVideoInput.addEventListener("change", () => {
+      setGeneratedIdIfEmpty();
+      const f = courseVideoInput.files?.[0] || null;
+      courseVideoMeta.textContent = f ? `${f.name} (${(f.size || 0).toLocaleString()} bytes)` : "—";
+      setStatus(videoUploadStatus, "", "");
+      updateMediaFormState();
+    });
+    uploadCoverBtn.addEventListener("click", () =>
+      uploadMediaFile({
+        file: coverImageInput.files?.[0] || null,
+        fileType: "image",
+        statusEl: coverUploadStatus,
+        buttonEl: uploadCoverBtn,
+      })
+    );
+    uploadVideoBtn.addEventListener("click", () =>
+      uploadMediaFile({
+        file: courseVideoInput.files?.[0] || null,
+        fileType: "video",
+        statusEl: videoUploadStatus,
+        buttonEl: uploadVideoBtn,
+      })
+    );
+
     // Init
     searchInput.value = "";
     setGeneratedIdIfEmpty();
-    updateUploadFormState();
+    updateFormState();
     loadCoursesFromApi();
 
     // Some browsers restore form values after JS runs (bfcache/session restore).
